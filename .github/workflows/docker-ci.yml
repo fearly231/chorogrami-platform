@@ -3,8 +3,7 @@ name: CI/CD Build & Push
 on:
   push:
     branches:
-      - development
-      - 'feature/docker_support'
+      -'main'
 
 permissions:
   contents: read
