@@ -1,0 +1,118 @@
+name: CI/CD Build & Push
+
+on:
+  push:
+    branches:
+      - development
+      - 'feature/docker_support'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # --- BACKEND JOB ---
+  build_and_push_backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+        with:                
+          fetch-depth: 0  
+
+      - name: Python configuration
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Linting Backend (Ruff)
+        run: |
+          ruff check ./backend --output-format=github
+          ruff format --check ./backend   
+
+      - name: ACR Logging
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Building local Backend
+        run: |
+          docker build ./backend -t local/backend:${{ env.IMAGE_TAG }}
+
+      - name: Security Scanning (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'local/backend:${{ env.IMAGE_TAG }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Tagging and Pushing Backend
+        run: |
+          docker tag local/backend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/backend:${{ env.IMAGE_TAG }}
+          docker tag local/backend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/backend:latest
+          docker push ${{ env.ACR_LOGIN_SERVER }}/backend:${{ env.IMAGE_TAG }}
+          docker push ${{ env.ACR_LOGIN_SERVER }}/backend:latest
+
+  # --- FRONTEND JOB ---
+  build_and_push_frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   
+
+      - name: Python configuration
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Linting Frontend (Ruff)
+        run: |
+          ruff check ./frontend --output-format=github
+          ruff format --check ./frontend
+
+      - name: ACR Logging
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Building local Frontend
+        run: |
+          # Usunąłem zbędny tag 'latest' tutaj, dodamy go przy pushu
+          docker build ./frontend -t local/frontend:${{ env.IMAGE_TAG }}
+
+      - name: Security Scanning (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'local/frontend:${{ env.IMAGE_TAG }}'
+          format: 'table'
+          exit-code: '1' 
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Tagging and Pushing Frontend
+        run: |
+          docker tag local/frontend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }}
+          docker tag local/frontend:${{ env.IMAGE_TAG }} ${{ env.ACR_LOGIN_SERVER }}/frontend:latest
+          
+          docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }}
+          docker push ${{ env.ACR_LOGIN_SERVER }}/frontend:latest

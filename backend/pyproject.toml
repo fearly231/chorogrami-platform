@@ -1,0 +1,28 @@
+[project]
+name = "chorogrami"
+version = "0.1.0"
+description = "Backend of city cycling game"
+authors = [
+    {name = "Adam Skorus"},
+    {name = "Alicja Frede"},
+    {name = "Jakub Polczyk"},
+    {name = "Julia Dela"},
+    {name = "Maciej Jerominek"},
+    {name = "Maciej Perek"},
+    {name = "Robert Kasprowski"},
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "email-validator>=2.3.0",
+    "fastapi[standard]>=0.119.0",
+    "prometheus-fastapi-instrumentator>=7.1.0",
+    "pwdlib[argon2]>=0.2.1",
+    "pydantic[email]>=2.12.3",
+    "sqlmodel>=0.0.27",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.4",
+]
