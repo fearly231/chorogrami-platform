@@ -3,7 +3,7 @@ name: CI/CD Build & Push
 on:
   push:
     branches:
-      -'main'
+      - main
 
 permissions:
   contents: read
